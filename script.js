@@ -151,24 +151,6 @@ function initPrayerTimes() {
     }, 1000);
   }
 
-  let lastAnnouncement = '';
-
-  function fetchAnnouncement() {
-    fetch(`announcement.txt?t=${Date.now()}`)
-      .then(response => response.text())
-      .then(text => {
-        if (text.trim() !== lastAnnouncement) {
-          lastAnnouncement = text.trim();
-          const announcementEl = document.getElementById('announcement-text');
-          announcementEl.textContent = lastAnnouncement;
-        }
-      })
-      .catch(err => {
-        console.error('Failed to load announcement:', err);
-      });
-  }
-
-
   const MAX_POSTERS = 5;
   let posterImages = [];
   let posterIndex = 0;
@@ -416,14 +398,12 @@ function initPrayerTimes() {
   fetchPrayerTimes();
   updateClock();
   loadPrayerTimes();
-  fetchAnnouncement();
   preloadAndCheckPosters();
   checkLiveStatusAndToggleOverlay();
   
   setInterval(updateClock, 1000);
   setInterval(loadPrayerTimes, 1000);
   setInterval(checkMakroohPoster, 1000);
-  setInterval(fetchAnnouncement, 60000);
   setInterval(fetchPrayerTimes, 300000);
   setInterval(refreshPosters, 300000);
   setInterval(checkLiveStatusAndToggleOverlay, 5000);
