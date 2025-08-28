@@ -126,7 +126,7 @@ function initPrayerTimes() {
         const jamatMs = jamatTime.getTime();
         const diff = jamatMs - nowMs;
         const elementId = `${prayer}-jamat`;
-        if (diff > 0 && diff <= 22000) startCountdown(elementId, jamatTime);
+        if (diff > 0 && diff <= 32000) startCountdown(elementId, jamatTime);
         else document.getElementById(`${prayer}-jamat`).textContent = getJamatTime(prayer, todayStr, tomorrowStr);
       }
     });
@@ -143,10 +143,12 @@ function initPrayerTimes() {
       if (diff > 0) {
         el.textContent = diff;
         el.classList.add('countdown');
+        stopPosterCycle();
       } else {
         clearInterval(intervalId);
         el.classList.remove('countdown');
         loadPrayerTimes();
+        startPosterCycle();
       }
     }, 1000);
   }
@@ -178,11 +180,11 @@ function initPrayerTimes() {
       img.onload = () => {
         posterImages.push(url);
         loaded++;
-        if (loaded === total) startPrayerPosterCycle();
+        if (loaded === total) startPosterCycle();
       };
       img.onerror = () => {
         loaded++;
-        if (loaded === total) startPrayerPosterCycle();
+        if (loaded === total) startPosterCycle();
       };
       img.src = url;
     }
@@ -193,11 +195,11 @@ function initPrayerTimes() {
       img.onload = () => {
         posterImages.push(url);
         loaded++;
-        if (loaded === total) startPrayerPosterCycle();
+        if (loaded === total) startPosterCycle();
       };
       img.onerror = () => {
         loaded++;
-        if (loaded === total) startPrayerPosterCycle();
+        if (loaded === total) startPosterCycle();
       };
       img.src = url;
     }
@@ -227,7 +229,7 @@ function initPrayerTimes() {
   }
   
   let posterCycleInterval = null;
-  function startPrayerPosterCycle() {
+  function startPosterCycle() {
     if (posterImages.length === 0 || posterCycleInterval) return;
 
     posterCycleInterval = setInterval(() => {
@@ -264,23 +266,56 @@ function initPrayerTimes() {
       String(now.getMonth() + 1).padStart(2, '0') + '-' +
       String(now.getDate()).padStart(2, '0');
 
-    const dhuhrStartStr = allData[todayStr]?.dhuhr?.start;
-    if (!dhuhrStartStr) return;
+    const dayData = allData[todayStr];
+    if (!dayData) return;
 
-    const [h, m] = dhuhrStartStr.split(':').map(Number);
-    const dhuhrStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
-    const makroohStart = new Date(dhuhrStart.getTime() - 600000);
-    const makroohEnd = new Date(dhuhrStart);
+    const asToday = (hhmm) => {
+      if (!hhmm) return null;
+      const [H, M] = hhmm.split(':').map(Number);
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate(), H, M, 0, 0);
+    };
 
-    if (now >= makroohStart && now < makroohEnd) {
-      if (!makroohShowing) {
-        makroohShowing = true;
-        document.getElementById('makrooh-overlay').style.display = 'block';
+    const sunriseStart  = asToday(dayData.sunrise?.start);
+    const dhuhrStart    = asToday(dayData.dhuhr?.start);
+    const maghribStart  = asToday(dayData.maghrib?.start);
+
+    const windows = [];
+
+    if (sunriseStart) {
+      windows.push({
+        start: sunriseStart,
+        end: new Date(sunriseStart.getTime() + 14 * 60 * 1000),
+      });
+    }
+    
+    if (dhuhrStart) {
+      windows.push({
+        start: new Date(dhuhrStart.getTime() - 5 * 60 * 1000),
+        end: dhuhrStart,
+      });
+    }
+
+    if (maghribStart) {
+      windows.push({
+        start: new Date(maghribStart.getTime() - 14 * 60 * 1000),
+        end: maghribStart,
+      });
+    }
+
+    const inMakrooh = windows.some(w => now >= w.start && now < w.end);
+
+    const el = document.getElementById('makrooh-overlay');
+    if (!el) return;
+
+    if (inMakrooh) {
+      if (!window.makroohShowing) {
+        window.makroohShowing = true;
+        el.style.display = 'block';
       }
     } else {
-      if (makroohShowing) {
-        makroohShowing = false;
-        document.getElementById('makrooh-overlay').style.display = 'none';
+      if (window.makroohShowing) {
+        window.makroohShowing = false;
+        el.style.display = 'none';
       }
     }
   }
@@ -292,14 +327,14 @@ function initPrayerTimes() {
       .then(status => {
         const dimOverlay = document.getElementById('dim-overlay');
         const shouldShowDim = status.isLive && status.kalimat !== 'kk-bayan';
-        // dimOverlay.style.display = shouldShowDim ? 'block' : 'none';
-        // dimOverlay.style.opacity = shouldShowDim ? '1' : '0';
+        dimOverlay.style.display = shouldShowDim ? 'block' : 'none';
+        dimOverlay.style.opacity = shouldShowDim ? '1' : '0';
         if (status.isLive) {
           stopPosterCycle();
           startKalimatPolling();
         } else {
+          startPosterCycle();
           stopKalimatPolling();
-          startPrayerPosterCycle();
         }
       })
       .catch(err => {
