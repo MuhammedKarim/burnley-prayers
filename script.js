@@ -99,6 +99,17 @@ function initPrayerTimes() {
     }
   }
 
+  function parseToday(hhmm) {
+    if (!hhmm) return null;
+    const [H, M] = hhmm.split(':').map(Number);
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), H, M, 0, 0);
+  }
+
+  function sameTime(a, b) {
+    return (a || '').trim() === (b || '').trim();
+  }
+
   function loadPrayerTimes() {
     const now = new Date();
     const nowMs = now.getTime();
@@ -128,6 +139,34 @@ function initPrayerTimes() {
         const elementId = `${prayer}-jamat`;
         if (diff > 0 && diff <= 32000) startCountdown(elementId, jamatTime);
         else document.getElementById(`${prayer}-jamat`).textContent = getJamatTime(prayer, todayStr, tomorrowStr);
+      }
+      if (prayer !== 'sunrise' && prayer !== 'maghrib') {
+        const todayDataP   = allData[todayStr]?.[prayer];
+        const tomorrowDataP= allData[tomorrowStr]?.[prayer];
+
+        const todayJamatStr    = todayDataP?.jamat || todayDataP?.start;
+        const tomorrowJamatStr = tomorrowDataP?.jamat || tomorrowDataP?.start;
+
+        const jamatChanged = todayJamatStr && tomorrowJamatStr && !sameTime(todayJamatStr, tomorrowJamatStr);
+
+        if (jamatChanged) {
+          const todayJamatDate = parseToday(todayJamatStr);
+          if (todayJamatDate) {
+            const startMs = todayJamatDate.getTime() + 5 * 60 * 1000;
+            const endMs   = todayJamatDate.getTime() + 15 * 60 * 1000;
+            const inFlashWindow = nowMs >= startMs && nowMs < endMs;
+
+            let elId = `${prayer}-jamat`;
+            const isFriday = (new Date(todayStr)).getDay() === 5;
+            if (prayer === 'dhuhr' && isFriday) elId = 'jumuah-jamat';
+
+            const el = document.getElementById(elId);
+            if (el) {
+              if (inFlashWindow) el.classList.add('countdown');
+              else el.classList.remove('countdown');
+            }
+          }
+        }
       }
     });
   }
