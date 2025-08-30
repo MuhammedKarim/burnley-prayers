@@ -365,7 +365,7 @@ function initPrayerTimes() {
       .then(res => res.json())
       .then(status => {
         const dimOverlay = document.getElementById('dim-overlay');
-        const shouldShowDim = status.isLive && status.kalimat !== 'kk-bayan';
+        const shouldShowDim = status.isLive && status.kalimat !== 'kk-bayan' && status.kalimat !== 'blank';
         dimOverlay.style.display = shouldShowDim ? 'block' : 'none';
         dimOverlay.style.opacity = shouldShowDim ? '1' : '0';
         if (status.isLive) {
