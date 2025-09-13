@@ -316,7 +316,7 @@ function initPrayerTimes() {
 
     const sunriseStart  = asToday(dayData.sunrise?.start);
     const dhuhrStart    = asToday(dayData.dhuhr?.start);
-    const maghribStart  = asToday(dayData.maghrib?.start);
+    // const maghribStart  = asToday(dayData.maghrib?.start);
 
     const windows = [];
 
@@ -334,12 +334,12 @@ function initPrayerTimes() {
       });
     }
 
-    if (maghribStart) {
-      windows.push({
-        start: new Date(maghribStart.getTime() - 14 * 60 * 1000),
-        end: maghribStart,
-      });
-    }
+    // if (maghribStart) {
+    //   windows.push({
+    //     start: new Date(maghribStart.getTime() - 14 * 60 * 1000),
+    //     end: maghribStart,
+    //   });
+    // }
 
     const inMakrooh = windows.some(w => now >= w.start && now < w.end);
 
