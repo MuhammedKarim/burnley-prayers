@@ -203,6 +203,34 @@ body {
   object-fit: contain;
 }
 
+#friday-durood-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 12;                 /* above #poster-overlay (10), below makrooh (15) & kalimat (20) */
+  transition: opacity 1.5s ease;
+  pointer-events: none;
+  display: none;
+  overflow: hidden;
+}
+
+#friday-durood-overlay::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: var(--friday-durood-url);
+  background-size: cover;
+  background-position: center;
+  filter: blur(35px);
+  transform: scale(1.1);
+  z-index: 0;
+}
+
+#friday-durood-overlay .poster-img {
+  position: relative; z-index: 1;
+  width: 100vw; height: 100vh;
+  object-fit: contain;
+}
+
 #kalimat-overlay {
   position: fixed;
   top: 0;

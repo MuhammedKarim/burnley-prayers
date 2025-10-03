@@ -448,6 +448,54 @@ function initPrayerTimes() {
     }, 1500);
   }
 
+  const FRI_DUROOD_URL = 'posters/fri_durood.jpg';
+  let fridayDuroodShowing = false;
+
+  function inFridayDuroodWindow() {
+    const now = new Date();
+    if (now.getDay() !== 5) return false;
+    const todayStr = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+    const asr = allData?.[todayStr]?.asr;
+    if (!asr) return false;
+    const jamatStr = (asr.jamat || asr.start);
+    if (!jamatStr) return false;
+    const [H, M] = jamatStr.split(':').map(Number);
+    const jamat = new Date(now.getFullYear(), now.getMonth(), now.getDate(), H, M, 0, 0);
+    const windowStart = new Date(jamat.getTime() + 4 * 60 * 1000);
+    const windowEnd   = new Date(windowStart.getTime() + 15 * 60 * 1000);
+    return now >= windowStart && now < windowEnd;
+  }
+
+  function showFridayDurood() {
+    const overlay = document.getElementById('friday-durood-overlay');
+    const img = overlay.querySelector('.poster-img');
+    const url = `${FRI_DUROOD_URL}?t=${Date.now()}`;
+    overlay.style.setProperty('--friday-durood-url', `url(${url})`);
+    img.src = url;
+    overlay.style.display = 'block';
+    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+  }
+
+  function hideFridayDurood() {
+    const overlay = document.getElementById('friday-durood-overlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.display = 'none'; }, 1500);
+  }
+
+  function checkFridayDuroodOverlay() {
+    if (inFridayDuroodWindow()) {
+      if (!fridayDuroodShowing) {
+        fridayDuroodShowing = true;
+        showFridayDurood();
+      }
+    } else if (fridayDuroodShowing) {
+      fridayDuroodShowing = false;
+      hideFridayDurood();
+    }
+  }
+
   function fetchPrayerTimes() {
     fetch(`prayer-times.json?t=${Date.now()}`)
       .then(res => res.json())
@@ -478,6 +526,7 @@ function initPrayerTimes() {
   setInterval(updateClock, 1000);
   setInterval(loadPrayerTimes, 1000);
   setInterval(checkMakroohPoster, 1000);
+  setInterval(checkFridayDuroodOverlay, 1000);
   setInterval(fetchPrayerTimes, 300000);
   setInterval(refreshPosters, 300000);
   setInterval(checkLiveStatusAndToggleOverlay, 5000);
