@@ -207,7 +207,7 @@ body {
   position: fixed;
   top: 0; left: 0;
   width: 100vw; height: 100vh;
-  z-index: 12;                 /* above #poster-overlay (10), below makrooh (15) & kalimat (20) */
+  z-index: 12;
   transition: opacity 1.5s ease;
   pointer-events: none;
   display: none;
