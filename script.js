@@ -162,8 +162,8 @@ function initPrayerTimes() {
 
             const el = document.getElementById(elId);
             if (el) {
-              if (inFlashWindow && elId !== "isha-jamat") el.classList.add('countdown');
-              else if (elId !== "isha-jamat") el.classList.remove('countdown');
+              if (inFlashWindow) el.classList.add('countdown');
+              else el.classList.remove('countdown');
             }
           }
         }
@@ -181,7 +181,7 @@ function initPrayerTimes() {
       const diff = Math.floor((targetDateTime.getTime() - now.getTime()) / 1000);
       if (diff > 0) {
         el.textContent = diff;
-        if (elementId !== "isha-jamat") el.classList.add('countdown');
+        el.classList.add('countdown');
         stopPosterCycle();
       } else {
         clearInterval(intervalId);
