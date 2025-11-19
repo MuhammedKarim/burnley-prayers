@@ -429,7 +429,7 @@ function initPrayerTimes() {
 
         if (status.kalimat !== currentKalimat) {
           if (status.kalimat === 'blank' && (currentKalimat === 'Dua' || currentKalimat === '')) status.kalimat = ''
-          const kalimatPath = `kalimat/${status.kalimat}.png?t=${Date.now()}`;
+          const kalimatPath = `kalimat/${status.kalimat}.jpg?t=${Date.now()}`;
           const img = new Image();
           img.onload = () => {
             kalimatImg.src = kalimatPath;
@@ -446,7 +446,8 @@ function initPrayerTimes() {
             setTimeout(() => {
               kalimatOverlay.style.display = 'none';
             }, 1500);
-            currentKalimat = null;
+            if (status.kalimat === '') currentKalimat = ''
+            else currentKalimat = null;
           };
           img.src = kalimatPath;
         } else {
