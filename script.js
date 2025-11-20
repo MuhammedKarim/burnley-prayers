@@ -256,7 +256,7 @@ function initPrayerTimes() {
     }
 
     if (shouldIncludePhotosPoster()) {
-      const url = `posters/photos.png?t=${Date.now()}`;
+      const url = `posters/photos.jpg?t=${Date.now()}`;
       const img = new Image();
       img.onload = () => {
         posterImages.push(url);
@@ -429,7 +429,7 @@ function initPrayerTimes() {
 
         if (status.kalimat !== currentKalimat) {
           if (status.kalimat === 'blank' && (currentKalimat === 'Dua' || currentKalimat === '')) status.kalimat = ''
-          const kalimatPath = `kalimat/${status.kalimat}.jpg?t=${Date.now()}`;
+          const kalimatPath = `kalimat/${status.kalimat}.png?t=${Date.now()}`;
           const img = new Image();
           img.onload = () => {
             kalimatImg.src = kalimatPath;
