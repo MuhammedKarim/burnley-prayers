@@ -256,7 +256,7 @@ function initPrayerTimes() {
     }
 
     if (shouldIncludePhotosPoster()) {
-      const url = `posters/photos.jpg?t=${Date.now()}`;
+      const url = `posters/photos.png?t=${Date.now()}`;
       const img = new Image();
       img.onload = () => {
         posterImages.push(url);
