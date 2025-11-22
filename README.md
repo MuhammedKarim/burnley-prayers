@@ -79,7 +79,7 @@ However, if the update is **urgent** and you want it to appear on the live scree
    
    Example:
    ```json
-   { "version": "1" }
+   { "version": "2" }
    ```
 4. Click **“Commit changes”**.
 
