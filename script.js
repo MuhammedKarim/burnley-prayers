@@ -201,7 +201,7 @@ function initPrayerTimes() {
     if (!todayVal) return tomorrowVal || null;
     const now = new Date();
     const todayTime = parseToday(todayVal);
-    const fifteens = 15 * 60 * 1000;
+    const fifteens = 30 * 60 * 1000;
     if (now - todayTime >= fifteens) return tomorrowVal || todayVal;
     return todayVal;
   }
