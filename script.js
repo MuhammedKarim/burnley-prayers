@@ -198,11 +198,11 @@ function initPrayerTimes() {
     if (!dhikrData) return null;
     const todayVal = dhikrData.today[slot];
     const tomorrowVal = dhikrData.tomorrow[slot];
-    if (!todayVal) return tomorrowVal || null;
+    if (!todayVal) return null;
     const now = new Date();
-    const todayTime = parseToday(todayVal);
-    const fifteens = 30 * 60 * 1000;
-    if (now - todayTime >= fifteens) return tomorrowVal || todayVal;
+    const todayTime = parseHHMMToToday(todayVal);
+    const thirties = 30 * 60 * 1000;
+    if (now - todayTime >= thirties) return tomorrowVal;
     return todayVal;
   }
 
@@ -212,9 +212,9 @@ function initPrayerTimes() {
       .then(status => {
         dhikrData = status;
         if (!dhikrData) return;
-        document.getElementById("dhikr-morning").textContent = formatTo12Hour(getDisplayTime("morning")) || "00:00";
-        document.getElementById("dhikr-evening").textContent = formatTo12Hour(getDisplayTime("evening")) || "00:00";
-        // document.getElementById("dhikr-night").textContent =  formatTo12Hour(getDisplayTime("night")) || "00:00";
+        document.getElementById("dhikr-morning").textContent = formatTo12Hour(getDisplayTime("morning")) || "-";
+        document.getElementById("dhikr-evening").textContent = formatTo12Hour(getDisplayTime("evening")) || "-";
+        document.getElementById("dhikr-night").textContent =  formatTo12Hour(getDisplayTime("night")) || "-";
       })
       .catch(err => console.error("Dhikr fetch error:", err));
   }
