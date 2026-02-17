@@ -118,6 +118,7 @@ function initPrayerTimes() {
 
   function loadPrayerTimes() {
     const now = new Date();
+    const nowMs = now.getTime();
     const { todayStr, tomorrowStr } = getTodayTomorrowStr();
 
     if (!allData[todayStr] || !allData[tomorrowStr]) return;
@@ -191,6 +192,13 @@ function initPrayerTimes() {
   }
 
   let dhikrData = null;
+
+  function parseHHMMToToday(hhmm) {
+    if (!hhmm) return null;
+    const [h, m] = hhmm.split(":").map(Number);
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+  }
 
   function getDisplayTime(slot) {
     if (!dhikrData) return null;
