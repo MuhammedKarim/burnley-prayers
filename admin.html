@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Taraweeh Overlay Admin</title>
+
+<style>
+:root{
+  --green-bg:#062f22;
+  --green-panel:#0a3a2b;
+  --gold:#c9a646;
+  --gold-soft:#d9bb68;
+  --text:#f5f5f5;
+  --muted:#c7c7c7;
+}
+
+body{
+  margin:0;
+  background:var(--green-bg);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+  padding:20px;
+}
+
+.card{
+  max-width:760px;
+  margin:auto;
+  background:var(--green-panel);
+  border:3px solid var(--gold);
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 0 25px rgba(0,0,0,.35);
+}
+
+h1{
+  margin:0 0 8px;
+  color:var(--gold-soft);
+  font-size:24px;
+}
+
+.muted{
+  color:var(--muted);
+  font-size:13px;
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:14px 0;
+  border-top:1px solid rgba(201,166,70,.35);
+}
+
+.row:first-of-type{border-top:0;}
+
+.label{
+  font-weight:700;
+  color:var(--gold-soft);
+}
+
+.sub{
+  font-size:13px;
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.pill{
+  font-size:12px;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid var(--gold);
+  color:var(--gold-soft);
+}
+
+.pill.on{
+  background:rgba(201,166,70,.2);
+}
+
+button{
+  padding:9px 12px;
+  border-radius:8px;
+  border:1px solid var(--gold);
+  background:transparent;
+  color:var(--gold-soft);
+  cursor:pointer;
+}
+
+button:hover{
+  background:rgba(201,166,70,.15);
+}
+
+.toggle{
+  width:56px;
+  height:32px;
+  border-radius:999px;
+  border:1px solid var(--gold);
+  background:#123b2b;
+  position:relative;
+}
+
+.toggle input{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  cursor:pointer;
+}
+
+.knob{
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  background:var(--gold-soft);
+  position:absolute;
+  top:2px;
+  left:2px;
+  transition:left .16s ease;
+}
+
+.toggle[data-on="true"]{
+  background:#1d5a43;
+}
+
+.toggle[data-on="true"] .knob{
+  left:27px;
+}
+
+.footer{
+  margin-top:14px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.error{
+  color:#ffb3b3;
+  margin-top:10px;
+}
+
+pre{
+  margin-top:10px;
+  background:#05271d;
+  border:1px solid rgba(201,166,70,.4);
+  color:#ddd;
+  padding:10px;
+  border-radius:8px;
+  overflow:auto;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1>Taraweeh Poster Admin</h1>
+  <div class="muted">Manual control for overlay display</div>
+
+  <div class="row">
+    <div>
+      <div class="label">Manual Override</div>
+      <div class="sub">When ON, schedule is ignored.</div>
+    </div>
+    <div class="right">
+      <span id="manualPill" class="pill">Loading…</span>
+      <div id="manualToggle" class="toggle" data-on="false">
+        <input id="manualInput" type="checkbox">
+        <div class="knob"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="label">Show Taraweeh Poster</div>
+      <div class="sub">Only works when manual override is ON.</div>
+    </div>
+    <div class="right">
+      <span id="showPill" class="pill">Loading…</span>
+      <div id="showToggle" class="toggle" data-on="false">
+        <input id="showInput" type="checkbox">
+        <div class="knob"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button id="refreshBtn">Refresh from API</button>
+    <span class="muted">Khanqah: <strong id="centreLabel"></strong></span>
+  </div>
+
+  <div id="err" class="error" style="display:none;"></div>
+
+  <details style="margin-top:12px;">
+    <summary class="muted">Debug state</summary>
+    <pre id="debug">Loading…</pre>
+  </details>
+</div>
+
+<script>
+const WORKER_BASE_URL = "https://taraweeh.muhammedkarim.workers.dev";
+const CENTRE_ID = "burnley";
+const STATE_URL = `${WORKER_BASE_URL}/state/${CENTRE_ID}`;
+
+const manualToggle=document.getElementById("manualToggle");
+const manualInput=document.getElementById("manualInput");
+const manualPill=document.getElementById("manualPill");
+
+const showToggle=document.getElementById("showToggle");
+const showInput=document.getElementById("showInput");
+const showPill=document.getElementById("showPill");
+
+const debug=document.getElementById("debug");
+const err=document.getElementById("err");
+document.getElementById("centreLabel").textContent=CENTRE_ID;
+
+let state=null;
+
+function setToggle(toggle,input,pill,on){
+  toggle.dataset.on=on;
+  input.checked=on;
+  pill.textContent=on?"ON":"OFF";
+  pill.className="pill"+(on?" on":"");
+}
+
+async function loadState(){
+  err.style.display="none";
+  try{
+    const r=await fetch(`${STATE_URL}?ts=${Date.now()}`);
+    state=await r.json();
+
+    setToggle(manualToggle,manualInput,manualPill,!!state.manualEnabled);
+    setToggle(showToggle,showInput,showPill,!!state.manualShow);
+
+    showInput.disabled=!state.manualEnabled;
+    debug.textContent=JSON.stringify(state,null,2);
+  }catch(e){
+    err.style.display="block";
+    err.textContent=e.message;
+  }
+}
+
+async function patchState(patch){
+  const r=await fetch(STATE_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(patch)
+  });
+  state=await r.json();
+  loadState();
+}
+
+manualInput.onchange=()=>{
+  patchState({manualEnabled:manualInput.checked});
+};
+
+showInput.onchange=()=>{
+  patchState({manualEnabled:true,manualShow:showInput.checked});
+};
+
+document.getElementById("refreshBtn").onclick=loadState;
+
+loadState();
+</script>
+
+</body>
+</html>

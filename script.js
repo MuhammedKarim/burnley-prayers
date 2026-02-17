@@ -57,46 +57,52 @@ function initPrayerTimes() {
     return false;
   }
   
-  function getStartTime(prayer, today, tomorrow) {
+  function getTodayTomorrowStr() {
     const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-    const todayStart = allData[today]?.[prayer]?.start;
-    const tomorrowStart = allData[tomorrow]?.[prayer]?.start;
-
-    if (!todayStart) return formatTo12Hour(tomorrowStart) || '--';
-
-    const [h, m] = todayStart.split(':').map(Number);
-    const offset = prayer === 'sunrise' ? 15 : 5;
-    const prayerMinutes = h * 60 + m + offset;
-
-    if (nowMinutes < prayerMinutes) {
-      return formatTo12Hour(todayStart);
-    } else {
-      return formatTo12Hour(tomorrowStart || todayStart);
-    }
+    const todayStr = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const tomorrowStr = tomorrow.getFullYear() + '-' +
+      String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
+      String(tomorrow.getDate()).padStart(2, '0');
+    return { todayStr, tomorrowStr };
   }
+  
+  function getSalahTime(prayer, today, tomorrow, opts = {}) {
+    const { kind = "jamat", raw = false } = opts;
 
-  function getJamatTime(prayer, today, tomorrow) {
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
     const todayData = allData[today]?.[prayer];
     const tomorrowData = allData[tomorrow]?.[prayer];
 
-    const todayJamat = todayData?.jamat || todayData?.start;
-    const tomorrowJamat = tomorrowData?.jamat || tomorrowData?.start;
+    const todayTime =
+      kind === "start" ? todayData?.start : (todayData?.jamat || todayData?.start);
+    const tomorrowTime =
+      kind === "start" ? tomorrowData?.start : (tomorrowData?.jamat || tomorrowData?.start);
 
-    if (!todayJamat) return formatTo12Hour(tomorrowJamat) || '--';
-
-    const [h, m] = todayJamat.split(':').map(Number);
-    const jamatMinutes = h * 60 + m + 5;
-
-    if (nowMinutes < jamatMinutes) {
-      return formatTo12Hour(todayJamat);
-    } else {
-      return formatTo12Hour(tomorrowJamat || todayJamat);
+    if (!todayTime) {
+      const fallback = tomorrowTime || null;
+      if (!fallback) return "--";
+      return raw ? fallback : (formatTo12Hour(fallback) || "--");
     }
+
+    const [h, m] = todayTime.split(":").map(Number);
+    const offset =
+      kind === "start"
+        ? (prayer === "sunrise" ? 15 : 5)
+        : 5;
+
+    const thresholdMinutes = h * 60 + m + offset;
+
+    const chosen = nowMinutes < thresholdMinutes
+      ? todayTime
+      : (tomorrowTime || todayTime);
+
+    return raw ? chosen : (formatTo12Hour(chosen) || "--");
   }
 
   function parseToday(hhmm) {
@@ -112,23 +118,15 @@ function initPrayerTimes() {
 
   function loadPrayerTimes() {
     const now = new Date();
-    const nowMs = now.getTime();
-    const todayStr = now.getFullYear() + '-' +
-                 String(now.getMonth() + 1).padStart(2, '0') + '-' +
-                 String(now.getDate()).padStart(2, '0');
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    const tomorrowStr = tomorrow.getFullYear() + '-' +
-                    String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
-                    String(tomorrow.getDate()).padStart(2, '0');
+    const { todayStr, tomorrowStr } = getTodayTomorrowStr();
 
     if (!allData[todayStr] || !allData[tomorrowStr]) return;
 
     document.getElementById('dhuhr-label').textContent = isJumuahPeriod(todayStr) ? 'JUMUAH' : 'DHUHR';
-    document.getElementById('jumuah-jamat').textContent = getJamatTime('dhuhr', todayStr, tomorrowStr);
+    document.getElementById('jumuah-jamat').textContent = getSalahTime('dhuhr', todayStr, tomorrowStr, { kind: "jamat" });
 
     prayersOrder.forEach(prayer => {
-      document.getElementById(`${prayer}-start`).textContent = getStartTime(prayer, todayStr, tomorrowStr);
+      document.getElementById(`${prayer}-start`).textContent = getSalahTime(prayer, todayStr, tomorrowStr, { kind: "start" });;
       if (prayer !== 'sunrise') {
         const todayJamatStr = allData[todayStr]?.[prayer]?.jamat || allData[todayStr]?.[prayer]?.start;
         if (!todayJamatStr) return;
@@ -138,7 +136,7 @@ function initPrayerTimes() {
         const diff = jamatMs - nowMs;
         const elementId = `${prayer}-jamat`;
         if (diff > 0 && diff <= 32000) startCountdown(elementId, jamatTime);
-        else document.getElementById(`${prayer}-jamat`).textContent = getJamatTime(prayer, todayStr, tomorrowStr);
+        else document.getElementById(`${prayer}-jamat`).textContent = getSalahTime(prayer, todayStr, tomorrowStr, { kind: "jamat" });
       }
       if (prayer !== 'sunrise' && prayer !== 'maghrib') {
         const todayDataP   = allData[todayStr]?.[prayer];
@@ -329,9 +327,8 @@ function initPrayerTimes() {
 
   function checkMakroohPoster() {
     const now = new Date();
-    const todayStr = now.getFullYear() + '-' +
-      String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0');
+    const { todayStr, tomorrowStr } = getTodayTomorrowStr();
+
 
     const dayData = allData[todayStr];
     if (!dayData) return;
@@ -484,9 +481,7 @@ function initPrayerTimes() {
   function inFridayDuroodWindow() {
     const now = new Date();
     if (now.getDay() !== 5) return false;
-    const todayStr = now.getFullYear() + '-' +
-      String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0');
+    const { todayStr, tomorrowStr } = getTodayTomorrowStr();
     const asr = allData?.[todayStr]?.asr;
     if (!asr) return false;
     const jamatStr = (asr.jamat || asr.start);
@@ -526,6 +521,48 @@ function initPrayerTimes() {
     }
   }
 
+
+
+    function shouldShowTaraweehBySchedule() {
+    const { todayStr, tomorrowStr } = getTodayTomorrowStr();
+    const ishaJamat = getSalahTime("isha", todayStr, tomorrowStr, { kind: "jamat", raw: true });
+    if (!ishaJamat) return false;
+    const [h, m] = ishaJamat.split(":").map(Number);
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const jamatMinutes = h * 60 + m;
+    const base = new Date(now);
+    if (nowMinutes >= jamatMinutes) {
+      base.setDate(base.getDate() + 1);
+    }
+    base.setHours(h, m, 0, 0);
+    const start = new Date(base.getTime() + 10 * 60000);
+    const end = new Date(start.getTime() + 100 * 60000);
+    return now >= start && now < end;
+  }
+
+  function setTaraweehVisible(show) {
+    const overlay = document.getElementById("taraweeh-dua-overlay");
+    overlay.style.display = show ? "block" : "none";
+  }
+
+  async function pollTaraweehStateAndApply() {
+    try {
+      const res = await fetch(`https://taraweeh.muhammedkarim.workers.dev/state/burnley?ts=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const state = await res.json();
+      if (state.manualEnabled) {
+        setTaraweehVisible(!!state.manualShow);
+        return;
+      }
+      setTaraweehVisible(shouldShowTaraweehBySchedule());
+    } catch (e) {
+      setTaraweehVisible(shouldShowTaraweehBySchedule());
+    }
+  }
+
+
+
   function fetchPrayerTimes() {
     fetch(`prayer-times.json?t=${Date.now()}`)
       .then(res => res.json())
@@ -553,6 +590,7 @@ function initPrayerTimes() {
   checkDhikr();
   preloadAndCheckPosters();
   checkLiveStatusAndToggleOverlay();
+  pollTaraweehStateAndApply();
   
   setInterval(updateClock, 1000);
   setInterval(loadPrayerTimes, 1000);
@@ -563,4 +601,5 @@ function initPrayerTimes() {
   setInterval(refreshPosters, 1800000);
   setInterval(checkLiveStatusAndToggleOverlay, 5000);
   setInterval(checkVersionAndReload, 60000);
+  setInterval(pollTaraweehStateAndApply, 10000);
 }
