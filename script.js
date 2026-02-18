@@ -555,6 +555,8 @@ function initPrayerTimes() {
   }
 
   async function pollTaraweehStateAndApply() {
+    const now = new Date();
+    if (now.getHours() < 19 || now.getHours() > 22) return
     try {
       const res = await fetch(`https://taraweeh.muhammedkarim.workers.dev/state/burnley?ts=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -609,5 +611,5 @@ function initPrayerTimes() {
   setInterval(refreshPosters, 1800000);
   setInterval(checkLiveStatusAndToggleOverlay, 5000);
   setInterval(checkVersionAndReload, 60000);
-  setInterval(pollTaraweehStateAndApply, 10000);
+  setInterval(pollTaraweehStateAndApply, 1000);
 }
