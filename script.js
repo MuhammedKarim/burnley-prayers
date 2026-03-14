@@ -438,12 +438,15 @@ function initPrayerTimes() {
           const kalimatPath = `kalimat/${status.kalimat}.png?t=${Date.now()}`;
           const img = new Image();
           img.onload = () => {
-            kalimatImg.src = kalimatPath;
-            kalimatOverlay.style.setProperty('--kalimat-url', `url(${kalimatPath})`);
-            kalimatOverlay.style.display = 'block';
             setTimeout(() => {
-              kalimatOverlay.style.opacity = '1';
-            }, 10);
+              kalimatImg.src = kalimatPath;
+              kalimatOverlay.style.setProperty('--kalimat-url', `url(${kalimatPath})`);
+              kalimatOverlay.style.display = 'block';
+
+              setTimeout(() => {
+                kalimatOverlay.style.opacity = '1';
+              }, 10);
+            }, 10000);
             currentKalimat = status.kalimat;
           };
           img.onerror = () => {
