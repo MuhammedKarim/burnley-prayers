@@ -446,7 +446,7 @@ function initPrayerTimes() {
               setTimeout(() => {
                 kalimatOverlay.style.opacity = '1';
               }, 10);
-            }, 10000);
+            }, 17000);
             currentKalimat = status.kalimat;
           };
           img.onerror = () => {
