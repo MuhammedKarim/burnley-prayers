@@ -221,12 +221,12 @@ function initPrayerTimes() {
         if (!dhikrData) return;
         document.getElementById("dhikr-morning").textContent = formatTo12Hour(getDisplayTime("morning")) || "-";
         document.getElementById("dhikr-evening").textContent = formatTo12Hour(getDisplayTime("evening")) || "-";
-        document.getElementById("dhikr-night").textContent =  formatTo12Hour(getDisplayTime("night")) || "-";
+        // document.getElementById("dhikr-night").textContent =  formatTo12Hour(getDisplayTime("night")) || "-";
       })
       .catch(err => console.error("Dhikr fetch error:", err));
   }
 
-  const MAX_POSTERS = 10;
+  const MAX_POSTERS = 20;
   let posterImages = [];
   let posterIndex = 0;
 
@@ -436,7 +436,7 @@ function initPrayerTimes() {
 
         if (status.kalimat !== currentKalimat) {
           if (status.kalimat === 'blank' && (currentKalimat === 'Dua' || currentKalimat === '')) status.kalimat = ''
-          const kalimatPath = `kalimat/${status.kalimat}.png?t=${Date.now()}`;
+          const kalimatPath = `kalimat/${status.kalimat}.jpg?t=${Date.now()}`;
           const img = new Image();
           img.onload = () => {
             kalimatImg.src = kalimatPath;
@@ -610,7 +610,7 @@ function initPrayerTimes() {
   setInterval(checkMakroohPoster, 1000);
   setInterval(checkFridayDuroodOverlay, 1000);
   setInterval(fetchPrayerTimes, 300000);
-  setInterval(refreshPosters, 1800000);
+  setInterval(refreshPosters, 180000000);
   setInterval(checkLiveStatusAndToggleOverlay, 5000);
   setInterval(checkVersionAndReload, 60000);
   // setInterval(pollTaraweehStateAndApply, 1000);
