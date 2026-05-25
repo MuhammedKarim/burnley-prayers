@@ -253,7 +253,7 @@ function initPrayerTimes() {
       .catch(err => console.error("Dhikr fetch error:", err));
   }
 
-  const MAX_POSTERS = 20;
+  const MAX_POSTERS = 30;
   let posterImages = [];
   let posterIndex = 0;
 
