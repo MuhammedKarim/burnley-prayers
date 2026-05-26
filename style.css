@@ -271,6 +271,26 @@ body {
   object-fit: contain;
 }
 
+#takbir-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: black;
+  z-index: 19;
+  display: none;
+  pointer-events: none;
+  overflow: hidden;
+  transition: opacity 0.5s ease;
+}
+
+#takbir-overlay .takbir-img {
+  width: 100vw;
+  height: 100vh;
+  object-fit: contain;
+}
+
 #kalimat-overlay {
   position: fixed;
   top: 0;

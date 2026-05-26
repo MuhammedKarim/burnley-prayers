@@ -558,6 +558,55 @@ function initPrayerTimes() {
     }
   }
 
+  const TAKBIR_DELAY_MINUTES = 4;
+  const TAKBIR_DURATION_MINUTES = 8;
+  let takbirShowing = false;
+
+  function isTakbirWindow() {
+    const now = new Date();
+    const { todayStr } = getTodayTomorrowStr();
+    const todayData = allData[todayStr];
+    if (!todayData) return false;
+
+    return ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].some(prayer => {
+      const jamatStr = todayData?.[prayer]?.jamat;
+      if (!jamatStr) return false;
+
+      const [h, m] = jamatStr.split(':').map(Number);
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
+
+      const jamat = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+      const start = new Date(jamat.getTime() + TAKBIR_DELAY_MINUTES * 60 * 1000);
+      const end = new Date(start.getTime() + TAKBIR_DURATION_MINUTES * 60 * 1000);
+
+      return now >= start && now < end;
+    });
+  }
+
+  function setTakbirVisible(show) {
+    const overlay = document.getElementById('takbir-overlay');
+    if (!overlay) return;
+
+    if (show) {
+      overlay.style.display = 'block';
+      requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+      });
+    } else {
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        if (!takbirShowing) overlay.style.display = 'none';
+      }, 500);
+    }
+  }
+
+  function checkTakbirOverlay() {
+    const shouldShow = isTakbirWindow();
+    if (shouldShow === takbirShowing) return;
+
+    takbirShowing = shouldShow;
+    setTakbirVisible(shouldShow);
+  }
 
 
   function shouldShowTaraweehBySchedule() {
@@ -630,6 +679,7 @@ function initPrayerTimes() {
   checkDhikr();
   preloadAndCheckPosters();
   checkLiveStatusAndToggleOverlay();
+  checkTakbirOverlay();
   // pollTaraweehStateAndApply();
   
   setInterval(updateClock, 1000);
@@ -641,5 +691,6 @@ function initPrayerTimes() {
   setInterval(refreshPosters, 1800000);
   setInterval(checkLiveStatusAndToggleOverlay, 5000);
   setInterval(checkVersionAndReload, 60000);
+  setInterval(checkTakbirOverlay, 1000);
   // setInterval(pollTaraweehStateAndApply, 1000);
 }
