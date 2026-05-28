@@ -597,7 +597,7 @@ function initPrayerTimes() {
     if (!todayData) return false;
 
     return ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].some(prayer => {
-      const jamatStr = todayData?.[prayer]?.jamat;
+      const jamatStr = todayData?.[prayer]?.jamat || (prayer === 'maghrib' ? todayData?.[prayer]?.start : null);
       if (!jamatStr) return false;
 
       const [h, m] = jamatStr.split(':').map(Number);
