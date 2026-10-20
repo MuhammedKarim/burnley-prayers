@@ -531,7 +531,7 @@ function initPrayerTimes() {
 
   function startKalimatPolling() {
     if (!kalimatInterval) {
-      kalimatInterval = setInterval(fetchKalimatStatus, 1000);
+      kalimatInterval = setInterval(fetchKalimatStatus, 5000);
     }
   }
 
