@@ -455,95 +455,158 @@ function initPrayerTimes() {
   }
 
 
-  function checkLiveStatusAndToggleOverlay() {
-    fetch('https://live-status.muhammedkarim.workers.dev')
-      .then(res => res.json())
-      .then(status => {
-        const dimOverlay = document.getElementById('dim-overlay');
-        const shouldShowDim = status.isLive && status.kalimat !== 'blank';
-        dimOverlay.style.display = shouldShowDim ? 'block' : 'none';
-        dimOverlay.style.opacity = shouldShowDim ? '1' : '0';
-        if (status.isLive) {
-          stopPosterCycle();
-          startKalimatPolling();
-        } else {
-          startPosterCycle();
-          stopKalimatPolling();
+  const LIVE_STATUS_URL = 'https://live-status.muhammedkarim.workers.dev';
+  let liveStatusRequest = null;
+  let liveStatusCheckInProgress = false;
+  let kalimatRequestInProgress = false;
+  let consecutiveOfflineResponses = 0;
+  let kalimatGeneration = 0;
+  let kalimatImageRequestId = 0;
+  let pendingKalimat = null;
+  let kalimatHideTimeout = null;
+
+  async function getValidLiveStatus() {
+    // Both pollers share an in-flight request; failures never become offline signals.
+    if (liveStatusRequest) return liveStatusRequest;
+    liveStatusRequest = (async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      try {
+        const response = await fetch(LIVE_STATUS_URL, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Live-status HTTP ' + response.status);
+        const status = await response.json();
+        if (!status || typeof status.isLive !== 'boolean' ||
+            (status.isLive && (typeof status.kalimat !== 'string' || !status.kalimat.trim()))) {
+          throw new Error('Invalid live-status response');
         }
-      })
-      .catch(err => {
-        console.error('Failed to fetch live status:', err);
-      });
+        return status;
+      } finally {
+        clearTimeout(timeout);
+      }
+    })();
+    try {
+      return await liveStatusRequest;
+    } finally {
+      liveStatusRequest = null;
+    }
+  }
+
+  async function checkLiveStatusAndToggleOverlay() {
+    if (liveStatusCheckInProgress) return;
+    liveStatusCheckInProgress = true;
+    try {
+      const status = await getValidLiveStatus();
+      if (status.isLive) consecutiveOfflineResponses = 0;
+      else if (++consecutiveOfflineResponses < 2) return;
+      const dimOverlay = document.getElementById('dim-overlay');
+      const shouldShowDim = status.isLive && status.kalimat !== 'blank';
+      dimOverlay.style.display = shouldShowDim ? 'block' : 'none';
+      dimOverlay.style.opacity = shouldShowDim ? '1' : '0';
+      if (status.isLive) {
+        stopPosterCycle();
+        startKalimatPolling();
+      } else {
+        stopKalimatPolling();
+        startPosterCycle();
+      }
+    } catch (err) {
+      console.error('Failed to fetch live status; keeping existing display:', err);
+    } finally {
+      liveStatusCheckInProgress = false;
+    }
   }
 
   let currentKalimat = null;
   let kalimatInterval = null;
 
-  function fetchKalimatStatus() {
-    fetch('https://live-status.muhammedkarim.workers.dev')
-      .then(res => res.json())
-      .then(status => {
-        const kalimatOverlay = document.getElementById('kalimat-overlay');
-        const kalimatImg = kalimatOverlay.querySelector('.kalimat-img');
-
-        if (!status.isLive || !status.kalimat) {
-          kalimatOverlay.style.opacity = '0';
-          setTimeout(() => {
-            kalimatOverlay.style.display = 'none';
-          }, 1500);
-          currentKalimat = null;
-          return;
-        }
-
-        if (status.kalimat !== currentKalimat) {
-          if (status.kalimat === 'blank' && (currentKalimat === 'Dua' || currentKalimat === '')) status.kalimat = ''
-          const kalimatPath = `kalimat/${status.kalimat}.jpg?t=${Date.now()}`;
-          const img = new Image();
-          img.onload = () => {
-            kalimatImg.src = kalimatPath;
-            kalimatOverlay.style.setProperty('--kalimat-url', `url(${kalimatPath})`);
-            kalimatOverlay.style.display = 'block';
-
-            setTimeout(() => {
-              kalimatOverlay.style.opacity = '1';
-            }, 10);
-            currentKalimat = status.kalimat;
-          };
-          img.onerror = () => {
-            console.warn(`Missing kalimat image: ${kalimatPath}`);
-            kalimatOverlay.style.opacity = '0';
-            setTimeout(() => {
-              kalimatOverlay.style.display = 'none';
-            }, 1500);
-            if (status.kalimat === '') currentKalimat = ''
-            else currentKalimat = null;
-          };
-          img.src = kalimatPath;
-        } else {
+  async function fetchKalimatStatus() {
+    if (!kalimatInterval || kalimatRequestInProgress) return;
+    kalimatRequestInProgress = true;
+    const generation = kalimatGeneration;
+    try {
+      const status = await getValidLiveStatus();
+      if (!kalimatInterval || generation !== kalimatGeneration || !status.isLive) return;
+      // Only the main poller confirms offline. Blank after dua is an explicit timetable transition.
+      if (status.kalimat === 'blank' && (currentKalimat === 'Dua' || currentKalimat === '')) {
+        currentKalimat = '';
+        stopPosterCycle();
+        kalimatImageRequestId++;
+        pendingKalimat = null;
+        const dimOverlay = document.getElementById('dim-overlay');
+        dimOverlay.style.display = 'none';
+        dimOverlay.style.opacity = '0';
+        hideKalimatOverlay();
+        return;
+      }
+      if (pendingKalimat === status.kalimat) return;
+      const imageRequestId = ++kalimatImageRequestId;
+      pendingKalimat = null;
+      const kalimatOverlay = document.getElementById('kalimat-overlay');
+      const kalimatImg = kalimatOverlay.querySelector('.kalimat-img');
+      if (status.kalimat !== currentKalimat) {
+        const kalimatPath = `kalimat/${status.kalimat}.jpg?t=${Date.now()}`;
+        pendingKalimat = status.kalimat;
+        const img = new Image();
+        img.onload = () => {
+          if (!kalimatInterval || generation !== kalimatGeneration || imageRequestId !== kalimatImageRequestId) return;
+          pendingKalimat = null;
+          clearTimeout(kalimatHideTimeout);
+          kalimatHideTimeout = null;
+          kalimatImg.src = kalimatPath;
+          kalimatOverlay.style.setProperty('--kalimat-url', `url(${kalimatPath})`);
           kalimatOverlay.style.display = 'block';
-          kalimatOverlay.style.opacity = '1';
-        }
-      })
-      .catch(err => {
-        console.error('Failed to fetch kalimat:', err);
-      });
-  }
-
-  function startKalimatPolling() {
-    if (!kalimatInterval) {
-      kalimatInterval = setInterval(fetchKalimatStatus, 5000);
+          setTimeout(() => {
+            if (kalimatInterval && generation === kalimatGeneration && imageRequestId === kalimatImageRequestId) {
+              kalimatOverlay.style.opacity = '1';
+            }
+          }, 10);
+          currentKalimat = status.kalimat;
+        };
+        img.onerror = () => {
+          if (imageRequestId === kalimatImageRequestId) pendingKalimat = null;
+          console.warn('Missing Kalimat image; keeping existing display:', kalimatPath);
+        };
+        img.src = kalimatPath;
+      } else {
+        kalimatOverlay.style.display = 'block';
+        kalimatOverlay.style.opacity = '1';
+      }
+    } catch (err) {
+      console.error('Failed to fetch Kalimat; keeping existing display:', err);
+    } finally {
+      kalimatRequestInProgress = false;
     }
   }
 
+  function hideKalimatOverlay() {
+    const generation = kalimatGeneration;
+    const overlay = document.getElementById('kalimat-overlay');
+    overlay.style.opacity = '0';
+    clearTimeout(kalimatHideTimeout);
+    kalimatHideTimeout = setTimeout(() => {
+      if (generation === kalimatGeneration && (!kalimatInterval || currentKalimat === '')) {
+        overlay.style.display = 'none';
+      }
+      kalimatHideTimeout = null;
+    }, 1500);
+  }
+
+  function startKalimatPolling() {
+    if (kalimatInterval) return;
+    clearTimeout(kalimatHideTimeout);
+    kalimatHideTimeout = null;
+    kalimatInterval = setInterval(fetchKalimatStatus, 1000);
+  }
+
   function stopKalimatPolling() {
+    if (!kalimatInterval) return;
     clearInterval(kalimatInterval);
     kalimatInterval = null;
     currentKalimat = null;
-    const overlay = document.getElementById('kalimat-overlay');
-    overlay.style.opacity = '0';
-    setTimeout(() => {
-      overlay.style.display = 'none';
-    }, 1500);
+    kalimatGeneration++;
+    kalimatImageRequestId++;
+    pendingKalimat = null;
+    hideKalimatOverlay();
   }
 
   const FRI_DUROOD_URL = 'posters/fri_durood.jpg';
